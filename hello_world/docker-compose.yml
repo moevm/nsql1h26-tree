@@ -1,0 +1,22 @@
+services: 
+  db: 
+    image: neo4j:5.16.0
+    container_name: family_tree
+    ports: 
+      - 7474:7474
+      - 7687:7687
+    environment:
+      - NEO4J_AUTH=neo4j/passwd11
+    volumes:
+      - db_data:/data
+  app: 
+    build: . 
+    depends_on: 
+      - db 
+    environment:
+      - DB_URI=bolt://db:7687
+      - DB_USER=neo4j
+      - DB_PASS=passwd11
+
+volumes:
+  db_data:
