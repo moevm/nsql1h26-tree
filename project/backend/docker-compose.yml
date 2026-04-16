@@ -1,0 +1,36 @@
+services:
+  db:
+    image: neo4j:5.18-community
+    container_name: tree_db 
+    environment:
+      - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
+    ports: 
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs 
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+  backend:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: tree_backend
+    env_file:
+      - .env 
+    ports: 
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy 
+    volumes:
+      - ./app:/app/app
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
