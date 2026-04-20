@@ -99,7 +99,10 @@ export default function Search() {
       </table>
       <PersonModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedPerson(null);
+        }}
         person={selectedPerson}
         onSelectPerson={async (id) => {
           const full = await getPerson(id);
