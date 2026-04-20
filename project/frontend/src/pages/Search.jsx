@@ -3,6 +3,8 @@ import { searchPersons } from "../api/api";
 import Navbar from "../components/Navbar";
 import PersonModal from "../components/PersonModal";
 import "../style.css";
+import { getPerson } from "../api/api";
+
 
 export default function Search() {
   const [filters, setFilters] = useState({});
@@ -76,14 +78,14 @@ export default function Search() {
             <tr><td>Ничего не найдено</td></tr>
           ) : (
             results.map(p => (
-              <tr 
-                key={p.id} 
-                onClick={() => {
-                  console.log("CLICK", p);
-                  setSelectedPerson(p);
+              <tr
+                key={p.id}
+                onClick={async () => {
                   setIsModalOpen(true);
+
+                  const fullPerson = await getPerson(p.id);
+                  setSelectedPerson(fullPerson);
                 }}
-                style={{ cursor: "pointer" }}
               >
                 <td>{p.first_name}</td>
                 <td>{p.last_name}</td>
@@ -99,6 +101,12 @@ export default function Search() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         person={selectedPerson}
+        onSelectPerson={async (id) => {
+          const full = await getPerson(id);
+          setSelectedPerson(full);
+        }}
+        onDelete={(id) => console.log("delete", id)}
+        onSave={(data) => console.log("save", data)}
       />
     </div>
   );

@@ -20,3 +20,13 @@ export async function getPerson(id) {
   const res = await fetch(`${API_BASE}/persons/${id}`);
   return res.json();
 }
+
+export async function createPerson(data) {
+  const res = await fetch(`${API_BASE}/persons`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  return res.json();
+}
