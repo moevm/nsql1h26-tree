@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getStats, getRecent } from "../api/api";
+import { getStats, getRecent, getPerson } from "../api/api";
 import Navbar from "../components/Navbar";
 import PersonModal from "../components/PersonModal";
 import "../style.css";
@@ -42,8 +42,9 @@ export default function Home() {
       <Navbar />
 
       <h1>Династия Романовых</h1>
+      <p className="subtitle">{stats.dynasty_start} — н.в.</p>
 
-      <h3>Российский императорский дом  {stats.dynasty_start} - {stats.dynasty_end}</h3>
+      <h3>Российский императорский дом</h3>
 
       <div className="cards">
         <div className="card pink">
@@ -58,7 +59,7 @@ export default function Home() {
 
         <div className="card yellow">
           <div className="value">
-            {stats.dynasty_end - stats.dynasty_start}
+            {new Date().getFullYear() - stats.dynasty_start}
           </div>
           <div>лет в истории</div>
         </div>
@@ -74,9 +75,10 @@ export default function Home() {
             <div 
               className="person-card" 
               key={p.id}
-              onClick={() => {
-                setSelectedPerson(p);
+              onClick={async () => {
                 setIsModalOpen(true);
+                const fullPerson = await getPerson(p.id);
+                setSelectedPerson(fullPerson);
               }}
               style={{ cursor: "pointer" }}
             >
@@ -94,8 +96,16 @@ export default function Home() {
 
       <PersonModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedPerson(null);
+        }}
         person={selectedPerson}
+        onSelectPerson={async (id) => {
+          const full = await getPerson(id);
+          setSelectedPerson(full);
+        }}
+        onDelete={(id) => console.log("delete", id)}
       />
     </div>
   );
