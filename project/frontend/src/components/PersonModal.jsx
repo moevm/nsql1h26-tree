@@ -22,7 +22,7 @@ export default function PersonModal({
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    if (person) setData(person);
+    setData(person);
   }, [person]);
 
   if (!isOpen || !data) return null;
