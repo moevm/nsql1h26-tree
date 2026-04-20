@@ -16,9 +16,10 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+
   backend:
     build:
-      context: ./
+      context: ./project/backend
       dockerfile: Dockerfile
     container_name: tree_backend
     env_file:
@@ -29,7 +30,22 @@ services:
       db:
         condition: service_healthy 
     volumes:
-      - ./app:/app/app
+      - ./project/backend/app:/app/app
+
+  frontend:
+    build:
+      context: ./project/frontend
+      dockerfile: Dockerfile
+    container_name: tree_frontend
+    env_file:
+      - ./project/frontend/.env
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./project/frontend/app:/app/app
+      - /app/node_modules
+    depends_on:
+      - backend
 
 volumes:
   neo4j_data:
