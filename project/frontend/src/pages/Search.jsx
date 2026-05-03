@@ -15,8 +15,20 @@ export default function Search() {
 
   async function search() {
     setLoading(true);
-    const data = await searchPersons(filters);
-    setResults(data);
+    const numericFields = ["birth_year_from", "birth_year_to", "death_year_from", "death_year_to"];
+    const clean = Object.fromEntries(
+      Object.entries(filters).filter(([k, v]) => {
+        if (v === "" || v === null || v === undefined) return false;
+        if (numericFields.includes(k)) return /^\d+$/.test(String(v));
+        return true;
+      })
+    );
+    try {
+      const data = await searchPersons(clean);
+      setResults(Array.isArray(data) ? data : []);
+    } catch {
+      setResults([]);
+    }
     setLoading(false);
   }
 
@@ -47,19 +59,19 @@ export default function Search() {
             <option value="F">Ж</option>
           </select>
 
-          <input placeholder="Год рождения от"
+          <input placeholder="Год рождения от" type="number" min="1"
             onChange={e => setFilters({ ...filters, birth_year_from: e.target.value })}
           />
 
-          <input placeholder="до"
+          <input placeholder="до" type="number" min="1"
             onChange={e => setFilters({ ...filters, birth_year_to: e.target.value })}
           />
 
-          <input placeholder="Год смерти от"
+          <input placeholder="Год смерти от" type="number" min="1"
             onChange={e => setFilters({ ...filters, death_year_from: e.target.value })}
           />
 
-          <input placeholder="до"
+          <input placeholder="до" type="number" min="1"
             onChange={e => setFilters({ ...filters, death_year_to: e.target.value })}
           />
 

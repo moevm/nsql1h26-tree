@@ -21,6 +21,7 @@ export default function AddPerson() {
   });
 
   const [errors, setErrors] = useState({});
+  const [successMsg, setSuccessMsg] = useState("");
   const [relations, setRelations] = useState([
     { type: "", person: null, search: "", results: [] },
   ]);
@@ -243,12 +244,13 @@ export default function AddPerson() {
 
     try {
       const created = await createPerson(payload);
-      console.dir(created, { depth: null });
 
-      navigate("/add");
+      setSuccessMsg(`Персона «${created.first_name} ${created.last_name}» успешно добавлена!`);
+      setForm({ first_name: "", last_name: "", gender: "", birth_year: "", death_year: "", title: "", country: "", dynasty: "", comment: "" });
+      setRelations([{ type: "", person: null, search: "", results: [] }]);
+      setErrors({});
     } catch (e) {
-      console.dir(e?.response?.data || e, { depth: null });
-
+      setSuccessMsg("");
       alert(
         e?.response?.data?.detail
           ? JSON.stringify(e.response.data.detail, null, 2)
@@ -262,6 +264,12 @@ export default function AddPerson() {
       <div className="add-person-container">
         <Navbar />
         <h1>Добавление персоны</h1>
+
+        {successMsg && (
+          <div style={{ background: "#d4edda", color: "#155724", border: "1px solid #c3e6cb", borderRadius: "6px", padding: "12px 16px", marginBottom: "16px" }}>
+            {successMsg}
+          </div>
+        )}
 
         <div className="form-container">
           <div className="form-row">
