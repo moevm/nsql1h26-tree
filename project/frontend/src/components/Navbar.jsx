@@ -22,14 +22,10 @@ export default function Navbar() {
             Статистика
           </NavLink>
 
-          <NavLink to="/import" className={({ isActive }) => isActive ? "active" : ""}>
-            Импорт
+          <NavLink to="/import_export" className={({ isActive }) => isActive ? "active" : ""}>
+            Импорт/Экспорт
           </NavLink>
-
-          <NavLink to="/export" className={({ isActive }) => isActive ? "active" : ""}>
-            Экспорт
-          </NavLink>
-
+          
           <NavLink to="/add" className={({ isActive }) => isActive ? "active" : ""}>
             Добавление персоны
           </NavLink>
