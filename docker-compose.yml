@@ -4,9 +4,6 @@ services:
     container_name: tree_db 
     environment:
       - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
-    ports: 
-      - "7474:7474"
-      - "7687:7687"
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs 
@@ -25,12 +22,10 @@ services:
     env_file:
       - .env 
     ports: 
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       db:
         condition: service_healthy 
-    volumes:
-      - ./project/backend/app:/app/app
 
   frontend:
     build:
@@ -40,10 +35,7 @@ services:
     env_file:
       - ./project/frontend/.env
     ports:
-      - "5173:5173"
-    volumes:
-      - ./project/frontend/app:/app/app
-      - /app/node_modules
+      - "127.0.0.1:5173:5173"
     depends_on:
       - backend
 
