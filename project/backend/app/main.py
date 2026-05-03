@@ -2,18 +2,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db import get_driver, close_driver
-from app.routers import persons, stats
+from app.routers import persons, stats, import_export
 from app.seed import seed
 from app.config import settings
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI): 
-    # Подключается и заполняет БД, если она пустая
     driver = get_driver()
     with driver.session() as session: 
         seed(session)
     yield
-    # Закрывает соединение 
     close_driver()
 
 app = FastAPI(
@@ -32,6 +31,7 @@ app.add_middleware(
 
 app.include_router(stats.router)
 app.include_router(persons.router)
+app.include_router(import_export.router)
 
 @app.get("/", tags=["health"])
 def health_check():
