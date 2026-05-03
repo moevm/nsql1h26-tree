@@ -30,3 +30,13 @@ export async function createPerson(data) {
 
   return res.json();
 }
+
+export async function updatePerson(id, data) {
+  const res = await fetch(`/api/persons/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Ошибка сохранения");
+  return res.json();
+}

@@ -4,6 +4,7 @@ import Search from "../pages/Search";
 import Placeholder from "../pages/Placeholder";
 import AddPerson  from "../pages/AddPerson";
 import ImportExport from "../pages/ImportExport";
+import EditPerson from "../pages/EditPerson";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Home /> },
@@ -12,4 +13,5 @@ export const router = createBrowserRouter([
   { path: "/stats", element: <Placeholder title="Статистика" /> },
   { path: "/import_export", element: <ImportExport /> },
   { path: "/add", element: <AddPerson /> },
+  { path: "/persons/:id/edit", element: <EditPerson /> },
 ]);
