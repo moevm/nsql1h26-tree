@@ -320,8 +320,6 @@ def export_database(session: Session) -> ExportData:
     )
 
 def import_database(session: Session, data: ImportData, replace: bool = False) -> dict:
-    
-    # Constraint — отдельно, вне транзакции
     session.run(
         "CREATE CONSTRAINT person_id IF NOT EXISTS "
         "FOR (p:Person) REQUIRE p.id IS UNIQUE"
@@ -375,3 +373,66 @@ def import_database(session: Session, data: ImportData, replace: bool = False) -
             f"Добавлено/обновлено: {len(data.persons)} персон, {len(data.relations)} связей"
         )
     }
+
+# UC-09: редактирование персоны
+def update_person(session: Session, person_id: str, data: PersonCreate, target_genders: dict) -> PersonFull:
+    now = _now_iso()
+
+    session.run(
+        """
+        MATCH (p:Person {id: $id})
+        SET p.first_name = $first_name,
+            p.last_name  = $last_name,
+            p.birth_year = $birth_year,
+            p.death_year = $death_year,
+            p.title      = $title,
+            p.country    = $country,
+            p.dynasty    = $dynasty,
+            p.gender     = $gender,
+            p.comment    = $comment,
+            p.updated_at = $updated_at
+        """,
+        id=person_id,
+        first_name=data.first_name,
+        last_name=data.last_name,
+        birth_year=data.birth_year,
+        death_year=data.death_year,
+        title=data.title,
+        country=data.country,
+        dynasty=data.dynasty,
+        gender=data.gender,
+        comment=data.comment,
+        updated_at=now,
+    )
+
+    session.run(
+        """
+        MATCH (p:Person {id: $id})-[r:RELATED_TO]-()
+        DELETE r
+        """,
+        id=person_id,
+    )
+
+    for rel in data.relations:
+        target_gender = target_genders.get(rel.related_person_id)
+        rev_type = _get_reverse_type(rel.relation_type, target_gender)
+        s_date = rel.start_date if rel.relation_type == "spouse" else None
+        e_date = rel.end_date if rel.relation_type == "spouse" else None
+
+        session.run(
+            """
+            MATCH (a:Person {id: $from_id}), (b:Person {id: $to_id})
+            CREATE (a)-[:RELATED_TO {
+                type: $rel_type, reverse_type: $rev_type,
+                start_date: $start_date, end_date: $end_date
+            }]->(b)
+            """,
+            from_id=person_id,
+            to_id=rel.related_person_id,
+            rel_type=rel.relation_type,
+            rev_type=rev_type,
+            start_date=s_date,
+            end_date=e_date,
+        )
+
+    return get_person_by_id(session, person_id)
