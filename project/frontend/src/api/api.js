@@ -42,3 +42,13 @@ export async function getGraphData() {
   const res = await fetch(`${API_BASE}/graph`);
   return res.json();
 }
+
+export async function updatePerson(id, data) {
+  const res = await fetch(`/api/persons/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Ошибка сохранения");
+  return res.json();
+}

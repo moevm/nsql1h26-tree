@@ -559,3 +559,46 @@ tr:hover {
 .confirm-actions .btn-cancel {
   background: #e8e8e8;
 }
+
+.io-grid {
+  display: flex;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+.io-box {
+  flex: 1;
+  padding: 20px;
+  border-radius: 10px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.io-box.export {
+  background: #ffe8cc; /* светло-оранжевый */
+}
+
+.io-box.import {
+  background: #d7f7d7; /* светло-зелёный */
+}
+
+.io-box button {
+  margin-top: 10px;
+  padding: 10px;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.success {
+  color: green;
+  font-weight: 500;
+}
+
+.warning {
+  color: #e53e3e;
+  font-size: 0.85rem;
+}

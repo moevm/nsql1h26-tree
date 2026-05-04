@@ -56,7 +56,6 @@ export default function ImportExport() {
       const data = await res.json();
 
       if (!res.ok) {
-        // бэкенд вернул HTTPException
         setMessage(`Ошибка: ${data.detail}`);
         return;
       }
