@@ -31,12 +31,14 @@ export async function createPerson(data) {
   return res.json();
 }
 
-export async function updatePerson(id, data) {
-  const res = await fetch(`/api/persons/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+export async function deletePerson(id) {
+  const res = await fetch(`${API_BASE}/persons/${id}`, {
+    method: "DELETE",
   });
-  if (!res.ok) throw new Error("Ошибка сохранения");
+  return res.json();
+}
+
+export async function getGraphData() {
+  const res = await fetch(`${API_BASE}/graph`);
   return res.json();
 }
