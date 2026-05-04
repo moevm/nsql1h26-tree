@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getStats, getRecent, getPerson } from "../api/api";
+import { getStats, getRecent, getPerson, deletePerson } from "../api/api";
 import Navbar from "../components/Navbar";
 import PersonModal from "../components/PersonModal";
 import "../style.css";
@@ -105,7 +105,16 @@ export default function Home() {
           const full = await getPerson(id);
           setSelectedPerson(full);
         }}
-        onDelete={(id) => console.log("delete", id)}
+        onDelete={async (id) => {
+          if (!window.confirm("Вы уверены, что хотите удалить эту персону? Все связи будут удалены.")) return;
+          await deletePerson(id);
+          setIsModalOpen(false);
+          setSelectedPerson(null);
+          const recentData = await getRecent();
+          setRecent(recentData);
+          const statsData = await getStats();
+          setStats(statsData);
+        }}
       />
     </div>
   );
