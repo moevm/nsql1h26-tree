@@ -11,10 +11,6 @@ from app.models import (
     PersonSearchParams,
     RelatedPersonBrief,
     RelationOut,
-    ExportData, 
-    ExportPerson, 
-    ExportRelation,
-    ImportData,
 )
 from app.seed import _get_reverse_type
 
@@ -259,180 +255,49 @@ def create_person(session: Session, data: PersonCreate, target_genders: dict) ->
     return person
 
 
-def export_database(session: Session) -> ExportData:
-    # Получение всех персон
+def delete_person(session: Session, person_id: str) -> bool:
+    result = session.run(
+        "MATCH (p:Person {id: $id}) DETACH DELETE p RETURN count(p) AS deleted",
+        id=person_id,
+    )
+    row = result.single()
+    return row and row["deleted"] > 0
+
+
+def get_graph_data(session: Session) -> dict:
     persons_result = session.run(
         """
         MATCH (p:Person)
         RETURN p
-        ORDER BY p.last_name, p.first_name
+        ORDER BY p.birth_year
         """
     )
-
     persons = []
     for rec in persons_result:
         p = dict(rec["p"])
-        persons.append(
-            ExportPerson(
-                id=p["id"],
-                first_name=p["first_name"],
-                last_name=p["last_name"],
-                birth_year=p.get("birth_year"),
-                death_year=p.get("death_year"),
-                title=p.get("title"),
-                country=p.get("country"),
-                dynasty=p.get("dynasty"),
-                gender=p.get("gender"),
-                comment=p.get("comment"),
-                created_at=p.get("created_at"),
-                updated_at=p.get("updated_at"),
-            )
-        )
+        persons.append({
+            "id": p["id"],
+            "first_name": p["first_name"],
+            "last_name": p["last_name"],
+            "birth_year": p.get("birth_year"),
+            "death_year": p.get("death_year"),
+            "title": p.get("title"),
+            "gender": p.get("gender"),
+        })
 
-    # Получение всех связей
     relations_result = session.run(
         """
         MATCH (a:Person)-[r:RELATED_TO]->(b:Person)
-        RETURN a.id AS from_id, b.id AS to_id,
-               r.type AS relation_type,
-               r.reverse_type AS reverse_type,
-               r.start_date AS start_date,
-               r.end_date AS end_date
+        RETURN a.id AS from_id, b.id AS to_id, r.type AS rel_type,
+               r.start_date AS start_date, r.end_date AS end_date
         """
     )
-
     relations = []
     for rec in relations_result:
-        relations.append(
-            ExportRelation(
-                from_id=rec["from_id"],
-                to_id=rec["to_id"],
-                relation_type=rec["relation_type"],
-                reverse_type=rec["reverse_type"],
-                start_date=rec["start_date"],
-                end_date=rec["end_date"],
-            )
-        )
+        relations.append({
+            "from_id": rec["from_id"],
+            "to_id": rec["to_id"],
+            "relation_type": rec["rel_type"],
+        })
 
-    return ExportData(
-        persons=persons,
-        relations=relations,
-    )
-
-def import_database(session: Session, data: ImportData, replace: bool = False) -> dict:
-    session.run(
-        "CREATE CONSTRAINT person_id IF NOT EXISTS "
-        "FOR (p:Person) REQUIRE p.id IS UNIQUE"
-    )
-
-    def _do_import(tx):
-        if replace:
-            tx.run("MATCH (n) DETACH DELETE n")
-
-        for person in data.persons:
-            tx.run(
-                """
-                MERGE (p:Person {id: $id})
-                SET p.first_name  = $first_name,
-                    p.last_name   = $last_name,
-                    p.birth_year  = $birth_year,
-                    p.death_year  = $death_year,
-                    p.title       = $title,
-                    p.country     = $country,
-                    p.dynasty     = $dynasty,
-                    p.gender      = $gender,
-                    p.comment     = $comment,
-                    p.created_at  = coalesce(p.created_at, $created_at),
-                    p.updated_at  = $updated_at
-                """,
-                **person.model_dump()
-            )
-
-        for rel in data.relations:
-            tx.run(
-                """
-                MATCH (a:Person {id: $from_id}), (b:Person {id: $to_id})
-                MERGE (a)-[r:RELATED_TO {type: $relation_type}]->(b)
-                SET r.reverse_type = $reverse_type,
-                    r.start_date   = $start_date,
-                    r.end_date     = $end_date
-                """,
-                **rel.model_dump()
-            )
-
-    session.execute_write(_do_import)
-
-    return {
-        "status": "success",
-        "persons_imported": len(data.persons),
-        "relations_imported": len(data.relations),
-        "mode": "replace" if replace else "merge",
-        "message": (
-            f"База заменена: {len(data.persons)} персон, {len(data.relations)} связей"
-            if replace else
-            f"Добавлено/обновлено: {len(data.persons)} персон, {len(data.relations)} связей"
-        )
-    }
-
-# UC-09: редактирование персоны
-def update_person(session: Session, person_id: str, data: PersonCreate, target_genders: dict) -> PersonFull:
-    now = _now_iso()
-
-    session.run(
-        """
-        MATCH (p:Person {id: $id})
-        SET p.first_name = $first_name,
-            p.last_name  = $last_name,
-            p.birth_year = $birth_year,
-            p.death_year = $death_year,
-            p.title      = $title,
-            p.country    = $country,
-            p.dynasty    = $dynasty,
-            p.gender     = $gender,
-            p.comment    = $comment,
-            p.updated_at = $updated_at
-        """,
-        id=person_id,
-        first_name=data.first_name,
-        last_name=data.last_name,
-        birth_year=data.birth_year,
-        death_year=data.death_year,
-        title=data.title,
-        country=data.country,
-        dynasty=data.dynasty,
-        gender=data.gender,
-        comment=data.comment,
-        updated_at=now,
-    )
-
-    session.run(
-        """
-        MATCH (p:Person {id: $id})-[r:RELATED_TO]-()
-        DELETE r
-        """,
-        id=person_id,
-    )
-
-    for rel in data.relations:
-        target_gender = target_genders.get(rel.related_person_id)
-        rev_type = _get_reverse_type(rel.relation_type, target_gender)
-        s_date = rel.start_date if rel.relation_type == "spouse" else None
-        e_date = rel.end_date if rel.relation_type == "spouse" else None
-
-        session.run(
-            """
-            MATCH (a:Person {id: $from_id}), (b:Person {id: $to_id})
-            CREATE (a)-[:RELATED_TO {
-                type: $rel_type, reverse_type: $rev_type,
-                start_date: $start_date, end_date: $end_date
-            }]->(b)
-            """,
-            from_id=person_id,
-            to_id=rel.related_person_id,
-            rel_type=rel.relation_type,
-            rev_type=rev_type,
-            start_date=s_date,
-            end_date=e_date,
-        )
-
-    return get_person_by_id(session, person_id)
+    return {"persons": persons, "relations": relations}
