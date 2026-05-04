@@ -60,21 +60,10 @@ def create_person(body: PersonCreate, session: Session = Depends(get_session)):
 
     return person_service.create_person(session, body, target_genders)
 
-# UC-09: редактирование персоны
-@router.put("/{person_id}", response_model=PersonFull, summary="Редактировать персону (UC-09)")
-def update_person(person_id: str, body: PersonCreate, session: Session = Depends(get_session)):
-    existing = person_service.get_person_by_id(session, person_id)
-    if not existing:
+
+@router.delete("/{person_id}", status_code=200, summary="Удалить персону (UC-10)")
+def delete_person(person_id: str, session: Session = Depends(get_session)):
+    deleted = person_service.delete_person(session, person_id)
+    if not deleted:
         raise HTTPException(status_code=404, detail=f"Person {person_id} not found")
-
-    target_genders = {}
-    for rel in body.relations:
-        related = person_service.get_person_by_id(session, rel.related_person_id)
-        if not related:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Person with relation not found: id={rel.related_person_id}",
-            )
-        target_genders[rel.related_person_id] = related.gender
-
-    return person_service.update_person(session, person_id, body, target_genders)
+    return {"status": "deleted", "id": person_id}
