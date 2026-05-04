@@ -439,45 +439,123 @@ tr:hover {
   gap: 10px;
 }
 
-.io-grid {
+.graph-header {
   display: flex;
-  gap: 30px;
-  margin-top: 20px;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
-.io-box {
-  flex: 1;
-  padding: 20px;
-  border-radius: 10px;
-  min-height: 200px;
+.graph-header h1 {
+  margin-bottom: 0;
+}
+
+.graph-controls {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+  margin-top: 5px;
 }
 
-.io-box.export {
-  background: #ffe8cc; /* светло-оранжевый */
-}
-
-.io-box.import {
-  background: #d7f7d7; /* светло-зелёный */
-}
-
-.io-box button {
-  margin-top: 10px;
-  padding: 10px;
+.graph-controls button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: white;
+  font-size: 18px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+}
+
+.graph-controls button:hover {
+  background: #f0f0f0;
+}
+
+.graph-legend {
+  display: flex;
+  gap: 20px;
+  margin: 10px 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.legend-line {
+  display: inline-block;
+  width: 30px;
+  height: 0;
+  border-top: 2px solid #888;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.legend-line.dashed {
+  border-top-style: dashed;
+  border-color: #c0a0c0;
+}
+
+.graph-canvas-wrapper {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+  height: calc(100vh - 220px);
+  min-height: 400px;
+}
+
+.graph-canvas-wrapper canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.confirm-dialog {
+  background: white;
+  border-radius: 10px;
+  padding: 25px 30px;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.confirm-dialog h3 {
+  margin: 0 0 10px;
+}
+
+.confirm-dialog p {
+  color: #555;
+  margin-bottom: 20px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.confirm-actions button {
+  padding: 8px 20px;
   border: none;
   border-radius: 6px;
-  background: #fff;
+  cursor: pointer;
 }
 
-.success {
-  color: green;
-  font-weight: 500;
+.confirm-actions .btn-delete {
+  background: #ffd6d6;
 }
 
-.warning {
-  color: #e53e3e;
-  font-size: 0.85rem;
+.confirm-actions .btn-cancel {
+  background: #e8e8e8;
 }
