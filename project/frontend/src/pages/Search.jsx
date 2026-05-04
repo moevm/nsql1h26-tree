@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { searchPersons } from "../api/api";
+import { searchPersons, getPerson, deletePerson } from "../api/api";
 import Navbar from "../components/Navbar";
 import PersonModal from "../components/PersonModal";
 import "../style.css";
-import { getPerson } from "../api/api";
 
 
 export default function Search() {
@@ -15,8 +14,20 @@ export default function Search() {
 
   async function search() {
     setLoading(true);
-    const data = await searchPersons(filters);
-    setResults(data);
+    const numericFields = ["birth_year_from", "birth_year_to", "death_year_from", "death_year_to"];
+    const clean = Object.fromEntries(
+      Object.entries(filters).filter(([k, v]) => {
+        if (v === "" || v === null || v === undefined) return false;
+        if (numericFields.includes(k)) return /^\d+$/.test(String(v));
+        return true;
+      })
+    );
+    try {
+      const data = await searchPersons(clean);
+      setResults(Array.isArray(data) ? data : []);
+    } catch {
+      setResults([]);
+    }
     setLoading(false);
   }
 
@@ -47,19 +58,19 @@ export default function Search() {
             <option value="F">Ж</option>
           </select>
 
-          <input placeholder="Год рождения от"
+          <input placeholder="Год рождения от" type="number" min="1"
             onChange={e => setFilters({ ...filters, birth_year_from: e.target.value })}
           />
 
-          <input placeholder="до"
+          <input placeholder="до" type="number" min="1"
             onChange={e => setFilters({ ...filters, birth_year_to: e.target.value })}
           />
 
-          <input placeholder="Год смерти от"
+          <input placeholder="Год смерти от" type="number" min="1"
             onChange={e => setFilters({ ...filters, death_year_from: e.target.value })}
           />
 
-          <input placeholder="до"
+          <input placeholder="до" type="number" min="1"
             onChange={e => setFilters({ ...filters, death_year_to: e.target.value })}
           />
 
@@ -108,8 +119,13 @@ export default function Search() {
           const full = await getPerson(id);
           setSelectedPerson(full);
         }}
-        onDelete={(id) => console.log("delete", id)}
-        onSave={(data) => console.log("save", data)}
+        onDelete={async (id) => {
+          if (!window.confirm("Вы уверены, что хотите удалить эту персону? Все связи будут удалены.")) return;
+          await deletePerson(id);
+          setIsModalOpen(false);
+          setSelectedPerson(null);
+          await search();
+        }}
       />
     </div>
   );
