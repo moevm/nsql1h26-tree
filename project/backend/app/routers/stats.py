@@ -20,3 +20,8 @@ def get_recent(
     limit: int = Query(default=5, ge=1, le=20),
     session: Session = Depends(get_session),
 ): return person_service.get_recent_persons(session, limit)
+
+
+@router.get("/graph", summary="Данные для графа дерева (UC-04)")
+def get_graph(session: Session = Depends(get_session)):
+    return person_service.get_graph_data(session)
