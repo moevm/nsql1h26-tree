@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 function getRelationLabel(type) {
   const map = {
@@ -20,7 +19,6 @@ export default function PersonModal({
   onSelectPerson,
   onDelete,
 }) {
-  const navigate = useNavigate();
   const [data, setData] = useState(null);
 
   useEffect(() => {
@@ -92,15 +90,13 @@ export default function PersonModal({
         </div>
 
         <div className="modal-actions">
-          <button onClick={() => { onClose(); navigate(`/persons/${data.id}/edit`); }}>
+          <button onClick={() => console.log("EDIT CLICK:", data)}>
             Редактировать
           </button>
 
           <button
             onClick={() => {
-              console.log("DELETE CLICK:", data.id);
               onDelete?.(data.id);
-              onClose();
             }}
           >
             Удалить
