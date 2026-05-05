@@ -13,6 +13,7 @@ export async function getRecent() {
 export async function searchPersons(filters) {
   const params = new URLSearchParams(filters);
   const res = await fetch(`${API_BASE}/persons/search?${params}`);
+  if (!res.ok) throw new Error("Search failed");
   return res.json();
 }
 
@@ -28,7 +29,9 @@ export async function createPerson(data) {
     body: JSON.stringify(data),
   });
 
-  return res.json();
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw { response: { data: json } };
+  return json;
 }
 
 export async function deletePerson(id) {
