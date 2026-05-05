@@ -21,6 +21,8 @@ export default function AddPerson() {
   });
 
   const [errors, setErrors] = useState({});
+  const [notification, setNotification] = useState(null);
+  const notifRef = useRef(null);
   const [relations, setRelations] = useState([
     { type: "", person: null, search: "", results: [] },
   ]);
@@ -243,17 +245,17 @@ export default function AddPerson() {
 
     try {
       const created = await createPerson(payload);
-      console.dir(created, { depth: null });
 
-      navigate("/add");
+      const name = `${created?.first_name ?? payload.first_name} ${created?.last_name ?? payload.last_name}`;
+      setNotification({ type: "success", text: `Персона «${name}» успешно добавлена!` });
+      setForm({ first_name: "", last_name: "", gender: "", birth_year: "", death_year: "", title: "", country: "", dynasty: "", comment: "" });
+      setRelations([{ type: "", person: null, search: "", results: [] }]);
+      setErrors({});
+      setTimeout(() => notifRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
     } catch (e) {
-      console.dir(e?.response?.data || e, { depth: null });
-
-      alert(
-        e?.response?.data?.detail
-          ? JSON.stringify(e.response.data.detail, null, 2)
-          : "Ошибка при создании",
-      );
+      const detail = e?.response?.data?.detail;
+      setNotification({ type: "error", text: detail ? JSON.stringify(detail, null, 2) : "Ошибка при создании персоны" });
+      setTimeout(() => notifRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
     }
   }
 
@@ -262,6 +264,23 @@ export default function AddPerson() {
       <div className="add-person-container">
         <Navbar />
         <h1>Добавление персоны</h1>
+
+        {notification && (
+          <div
+            ref={notifRef}
+            style={{
+              background: notification.type === "success" ? "#d4edda" : "#f8d7da",
+              color: notification.type === "success" ? "#155724" : "#721c24",
+              border: `1px solid ${notification.type === "success" ? "#c3e6cb" : "#f5c6cb"}`,
+              borderRadius: "6px",
+              padding: "12px 16px",
+              marginBottom: "16px",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {notification.text}
+          </div>
+        )}
 
         <div className="form-container">
           <div className="form-row">
