@@ -58,20 +58,24 @@ export default function Search() {
             <option value="F">Ж</option>
           </select>
 
-          <input placeholder="Год рождения от" type="number" min="1"
-            onChange={e => setFilters({ ...filters, birth_year_from: e.target.value })}
+          <input placeholder="Год рождения от" inputMode="numeric"
+            value={filters.birth_year_from || ""}
+            onChange={e => setFilters({ ...filters, birth_year_from: e.target.value.replace(/\D/g, "") })}
           />
 
-          <input placeholder="до" type="number" min="1"
-            onChange={e => setFilters({ ...filters, birth_year_to: e.target.value })}
+          <input placeholder="до" inputMode="numeric"
+            value={filters.birth_year_to || ""}
+            onChange={e => setFilters({ ...filters, birth_year_to: e.target.value.replace(/\D/g, "") })}
           />
 
-          <input placeholder="Год смерти от" type="number" min="1"
-            onChange={e => setFilters({ ...filters, death_year_from: e.target.value })}
+          <input placeholder="Год смерти от" inputMode="numeric"
+            value={filters.death_year_from || ""}
+            onChange={e => setFilters({ ...filters, death_year_from: e.target.value.replace(/\D/g, "") })}
           />
 
-          <input placeholder="до" type="number" min="1"
-            onChange={e => setFilters({ ...filters, death_year_to: e.target.value })}
+          <input placeholder="до" inputMode="numeric"
+            value={filters.death_year_to || ""}
+            onChange={e => setFilters({ ...filters, death_year_to: e.target.value.replace(/\D/g, "") })}
           />
 
         </div>
