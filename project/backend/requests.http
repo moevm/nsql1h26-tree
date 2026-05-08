@@ -1,0 +1,104 @@
+### Переменная базового URL (менять здесь одно место)
+@base = http://localhost:8000/api
+
+
+### UC-01: Статистика династии
+GET {{base}}/stats
+
+
+### UC-01: Последние добавленные персоны (5 штук)
+GET {{base}}/persons/recent?limit=5
+
+
+### UC-02: Поиск — все персоны (без фильтров)
+GET {{base}}/persons/search
+
+
+### UC-02: Поиск по имени (регистронезависимо, подстрока)
+GET {{base}}/persons/search?first_name=ол
+
+
+### UC-02: Поиск по фамилии
+GET {{base}}/persons/search?last_name=романов
+
+
+### UC-02: Поиск по полу
+GET {{base}}/persons/search?gender=M
+
+
+### UC-02: Поиск по диапазону года рождения
+GET {{base}}/persons/search?birth_year_from=1800&birth_year_to=1900
+
+
+### UC-02: Поиск по диапазону года смерти
+GET {{base}}/persons/search?death_year_from=1900&death_year_to=2000
+
+
+### UC-02: Сложный многокритериальный поиск
+### (мужчины, рождённые до 1850, имя содержит "ал")
+GET {{base}}/persons/search?gender=M&birth_year_to=1850&first_name=ал
+
+
+### UC-03: Карточка персоны по ID
+### (подставьте реальный ID из результата поиска)
+GET {{base}}/persons/REPLACE_WITH_REAL_ID
+
+
+### UC-08: Добавление персоны (минимальный набор полей)
+POST {{base}}/persons
+Content-Type: application/json
+
+{
+  "first_name": "Иван",
+  "last_name": "Петров",
+  "gender": "M",
+  "birth_year": 1850,
+  "title": "Граф",
+  "country": "Россия",
+  "dynasty": "Петровы"
+}
+
+
+### UC-08: Добавление персоны со всеми полями и связью
+### (подставьте реальный ID в related_person_id)
+POST {{base}}/persons
+Content-Type: application/json
+
+{
+  "first_name": "Мария",
+  "last_name": "Петрова",
+  "gender": "F",
+  "birth_year": 1875,
+  "death_year": 1950,
+  "title": "Графиня",
+  "country": "Россия",
+  "dynasty": "Петровы",
+  "comment": "Дочь Ивана Петрова",
+  "relations": [
+    {
+      "relation_type": "father",
+      "related_person_id": "REPLACE_WITH_REAL_ID"
+    }
+  ]
+}
+  
+
+### UC-08: Проверка ошибки — неверный тип связи (ожидается 422)
+POST {{base}}/persons
+Content-Type: application/json
+
+{
+  "first_name": "Тест",
+  "last_name": "Тестов",
+  "gender": "M",
+  "birth_year": 1900,
+  "title": "Тест",
+  "country": "Россия",
+  "dynasty": "Тесты",
+  "relations": [
+    {
+      "relation_type": "enemy",
+      "related_person_id": "123"
+    }
+  ]
+}

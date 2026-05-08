@@ -101,3 +101,35 @@ class PersonSearchParams(BaseModel):
     birth_year_to: int | None = None 
     death_year_from: int | None = None 
     death_year_to: int | None = None 
+
+class ExportRelation(BaseModel):
+    from_id: str
+    to_id: str
+    relation_type: str
+    reverse_type: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+
+
+class ExportPerson(BaseModel):
+    id: str
+    first_name: str
+    last_name: str
+    birth_year: int | None = None
+    death_year: int | None = None
+    title: str | None = None
+    country: str | None = None
+    dynasty: str | None = None
+    gender: str | None = None
+    comment: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class ExportData(BaseModel):
+    persons: list[ExportPerson]
+    relations: list[ExportRelation]
+
+class ImportData(BaseModel):
+    persons: list[ExportPerson]
+    relations: list[ExportRelation]
