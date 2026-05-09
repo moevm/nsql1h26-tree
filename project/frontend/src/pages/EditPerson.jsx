@@ -55,6 +55,8 @@ export default function EditPerson() {
             first_name: rel.related_person.first_name,
             last_name:  rel.related_person.last_name,
             gender:     rel.related_person.gender,
+            birth_year: rel.related_person.birth_year,
+            death_year: rel.related_person.death_year,
           },
           search:  `${rel.related_person.first_name} ${rel.related_person.last_name}`,
           results: [],
@@ -254,7 +256,7 @@ export default function EditPerson() {
                 {r.results.map((p) => (
                   <div key={p.id} className="search-result-item"
                     onClick={() => selectRelationPerson(i, p)}>
-                    {p.first_name} {p.last_name}
+                    {p.first_name} {p.last_name} {p.birth_year ? ` (${p.birth_year}–${p.death_year ?? "н.в."})` : ""}
                   </div>
                 ))}
               </div>
@@ -262,7 +264,7 @@ export default function EditPerson() {
 
             {r.person && (
               <span className="selected-person">
-                ✓ {r.person.first_name} {r.person.last_name}
+                ✓ {r.person.first_name} {r.person.last_name} {r.person.birth_year ? ` (${r.person.birth_year}–${r.person.death_year ?? "н.в."})` : ""}
               </span>
             )}
 

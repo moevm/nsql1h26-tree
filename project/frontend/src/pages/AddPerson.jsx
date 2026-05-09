@@ -384,7 +384,7 @@ export default function AddPerson() {
               <div className="search-results">
                 {r.results.map((p) => (
                   <div key={p.id} onClick={() => selectRelationPerson(i, p)}>
-                    {p.first_name} {p.last_name}
+                    {p.first_name} {p.last_name} {p.birth_year ? ` (${p.birth_year}–${p.death_year ?? "н.в."})` : ""}
                   </div>
                 ))}
               </div>
@@ -392,7 +392,7 @@ export default function AddPerson() {
 
             {r.person && (
               <div>
-                ✓ {r.person.first_name} {r.person.last_name}
+                ✓ {r.person.first_name} {r.person.last_name} {r.person.birth_year ? ` (${r.person.birth_year}–${r.person.death_year ?? "н.в."})` : ""}
               </div>
             )}
           </div>
