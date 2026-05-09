@@ -31,19 +31,32 @@ export default function PersonModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-
-        <div className="modal-header">
+      <div
+        className="modal-content"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "90vh",
+        }}
+      >
+        <div className="modal-header" style={{ flexShrink: 0 }}>
           <span>
             {data.first_name} {data.last_name}
           </span>
-
           <button className="modal-close" onClick={onClose}>
             ×
           </button>
         </div>
-        <div className="modal-body">
 
+        <div
+          className="modal-body"
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            minHeight: 0,
+          }}
+        >
           <div className="modal-info">
             <p>Год рождения: {data.birth_year ?? "?"}</p>
             <p>Год смерти: {data.death_year ?? "н.в."}</p>
@@ -66,7 +79,6 @@ export default function PersonModal({
                     <th>Годы</th>
                   </tr>
                 </thead>
-
                 <tbody>
                   {data.relations.map((rel, i) => (
                     <tr
@@ -76,7 +88,8 @@ export default function PersonModal({
                     >
                       <td>{getRelationLabel(rel.relation_type)}</td>
                       <td style={{ color: "blue" }}>
-                        {rel.related_person.first_name} {rel.related_person.last_name}
+                        {rel.related_person.first_name}{" "}
+                        {rel.related_person.last_name}
                       </td>
                       <td>
                         {rel.related_person.birth_year ?? "?"} –{" "}
@@ -88,21 +101,18 @@ export default function PersonModal({
               </table>
             )}
           </div>
-
         </div>
 
-        <div className="modal-actions">
-          <button onClick={() => { onClose(); navigate(`/persons/${data.id}/edit`); }}>
-            Редактировать
-          </button>
-
+        <div className="modal-actions" style={{ flexShrink: 0 }}>
           <button
             onClick={() => {
-              onDelete?.(data.id);
+              onClose();
+              navigate(`/persons/${data.id}/edit`);
             }}
           >
-            Удалить
+            Редактировать
           </button>
+          <button onClick={() => onDelete?.(data.id)}>Удалить</button>
         </div>
       </div>
     </div>
