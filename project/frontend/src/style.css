@@ -309,6 +309,10 @@ tr:hover {
   background: #ffd6d6;
 }
 
+.modal-actions .modal-graph-btn {
+  background: #d6ecf7;
+}
+
 .modal-actions button:hover {
   filter: brightness(0.95);
 }
