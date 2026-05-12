@@ -1,21 +1,23 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getGraphData, getPerson, deletePerson } from "../api/api";
 import Navbar from "../components/Navbar";
 import PersonModal from "../components/PersonModal";
 import "../style.css";
 
+// Размеры узла и отступы (в пикселях)
 const NODE_W = 150;
 const NODE_H = 58;
 const H_GAP = 28;
 const V_GAP = 90;
 const SLOT = NODE_W + H_GAP;
 
-// ─── Layout ────────────────────────────────────────────────────────────────
+// ─── Построение раскладки дерева ──────────────────────────────────────────
 
 function buildLayout(persons, relations) {
   if (!persons.length) return null;
 
-  /* Build node map */
+  // Создаём карту узлов
   const nodes = {};
   persons.forEach((p) => {
     nodes[p.id] = { ...p, parents: [], children: [], spouses: [] };
@@ -25,11 +27,12 @@ function buildLayout(persons, relations) {
   const spouseEdges      = [];
   const seenSpouses      = new Set();
 
+  // Разбираем рёбра на родитель-ребёнок и супружеские
   relations.forEach(({ from_id, to_id, relation_type }) => {
     if (!nodes[from_id] || !nodes[to_id]) return;
 
     if (relation_type === "father" || relation_type === "mother") {
-      // from_id = child, to_id = parent
+      // from_id = ребёнок, to_id = родитель
       if (!nodes[from_id].parents.includes(to_id)) nodes[from_id].parents.push(to_id);
       if (!nodes[to_id].children.includes(from_id)) {
         nodes[to_id].children.push(from_id);
@@ -46,16 +49,14 @@ function buildLayout(persons, relations) {
     }
   });
 
-  /* ── STEP 1: init all parentless nodes at generation 0 ── */
+  // Шаг 1: все узлы без родителей начинают с поколения 0
   const genOf = {};
   Object.values(nodes).forEach((n) => {
     if (n.parents.length === 0) genOf[n.id] = 0;
   });
 
-  /* ── STEP 2: Bellman-Ford longest path (parent → child)
-       Each child is placed BELOW ALL its parents.
-       This fixes the case where one parent is at gen=0 (married-in)
-       and the other at gen=1 — the child gets gen=2, not gen=1.       ── */
+  // Шаг 2: алгоритм Беллмана-Форда (длиннейший путь родитель → ребёнок)
+  // Ребёнок размещается НИЖЕ ВСЕХ своих родителей
   let changed = true;
   while (changed) {
     changed = false;
@@ -69,15 +70,14 @@ function buildLayout(persons, relations) {
     });
   }
 
-  /* ── STEP 3: Give "married-in" spouses the same generation
-       as the dynasty member they married.                    ── */
+  // Шаг 3: «вошедшие в династию» супруги получают поколение своего партнёра
   changed = true;
   while (changed) {
     changed = false;
     Object.keys(nodes).forEach((id) => {
-      if (nodes[id].parents.length > 0) return; // has parents → already correct
+      if (nodes[id].parents.length > 0) return;
       const dynastyGens = nodes[id].spouses
-        .filter((sid) => nodes[sid].parents.length > 0)   // spouse has parents = dynasty member
+        .filter((sid) => nodes[sid].parents.length > 0)
         .map((sid) => genOf[sid])
         .filter((g) => g !== undefined);
       if (!dynastyGens.length) return;
@@ -86,15 +86,15 @@ function buildLayout(persons, relations) {
     });
   }
 
-  /* fallback for anything still unassigned */
+  // Запасной вариант для неприсвоенных
   Object.keys(nodes).forEach((id) => { if (genOf[id] === undefined) genOf[id] = 0; });
 
-  /* ── STEP 4: group by generation ── */
+  // Шаг 4: группируем по поколениям
   const byGen = {};
   Object.entries(genOf).forEach(([id, g]) => { (byGen[g] = byGen[g] || []).push(id); });
   const maxGen = Math.max(...Object.values(genOf));
 
-  /* helper: average X-centre of already-placed parents */
+  // Вспомогательная функция: средний X-центр уже размещённых родителей
   const pos = {};
   function avgParentX(id) {
     const pp = nodes[id].parents.filter((pid) => pos[pid]);
@@ -102,18 +102,18 @@ function buildLayout(persons, relations) {
     return pp.reduce((s, pid) => s + pos[pid].x + NODE_W / 2, 0) / pp.length - NODE_W / 2;
   }
 
-  /* ── STEP 5: top-down placement ── */
+  // Шаг 5: размещение сверху вниз
   for (let g = 0; g <= maxGen; g++) {
     const ids = byGen[g] || [];
 
-    /* sort by average parent position, fall back to birth_year */
+    // Сортируем по средней позиции родителей, иначе по году рождения
     ids.sort((a, b) => {
       const ax = avgParentX(a) ?? (nodes[a].birth_year || 9999);
       const bx = avgParentX(b) ?? (nodes[b].birth_year || 9999);
       return ax - bx;
     });
 
-    /* group spouses adjacent: dynasty member first, then their spouse(s) */
+    // Группируем супругов рядом: сначала член династии, затем его супруг(а)
     const ordered = [];
     const placed  = new Set();
     ids.forEach((id) => {
@@ -136,9 +136,7 @@ function buildLayout(persons, relations) {
     });
   }
 
-  /* ── STEP 6: bottom-up re-centering
-       Shift each node (and its same-generation spouse) to be centred
-       above their children, then re-resolve overlaps.                ── */
+  // Шаг 6: центрирование снизу вверх — сдвигаем узел над серединой его детей
   for (let g = maxGen - 1; g >= 0; g--) {
     const ids = byGen[g] || [];
 
@@ -156,7 +154,7 @@ function buildLayout(persons, relations) {
         .forEach((sid) => { pos[sid] = { ...pos[sid], x: pos[sid].x + shift }; });
     });
 
-    /* sweep left-to-right to fix overlaps */
+    // Проход слева направо для устранения перекрытий
     const row = [...ids].sort((a, b) => pos[a].x - pos[b].x);
     let cur = pos[row[0]]?.x ?? 0;
     row.forEach((id, i) => {
@@ -166,7 +164,7 @@ function buildLayout(persons, relations) {
     });
   }
 
-  /* ── STEP 7: normalize so minX = 20, minY = 20 ── */
+  // Шаг 7: нормализация — сдвигаем так, чтобы minX = 20, minY = 20
   const minX = Math.min(...Object.values(pos).map((p) => p.x));
   Object.keys(pos).forEach((id) => {
     pos[id] = { x: pos[id].x - minX + 20, y: pos[id].y + 20 };
@@ -175,7 +173,7 @@ function buildLayout(persons, relations) {
   const totalW = Math.max(...Object.values(pos).map((p) => p.x)) + NODE_W + 20;
   const totalH = maxGen * (NODE_H + V_GAP) + NODE_H + 40;
 
-  // Centre X of the top generation (for initial viewport)
+  // Центр X верхнего поколения (для начального смещения камеры)
   const topY = Math.min(...Object.values(pos).map((p) => p.y));
   const topNodes = Object.values(pos).filter((p) => p.y === topY);
   const rootCenterX = topNodes.reduce((s, p) => s + p.x + NODE_W / 2, 0) / topNodes.length;
@@ -183,9 +181,9 @@ function buildLayout(persons, relations) {
   return { nodes, pos, parentChildEdges, spouseEdges, totalW, totalH, rootCenterX };
 }
 
-// ─── Drawing ───────────────────────────────────────────────────────────────
+// ─── Отрисовка на Canvas ──────────────────────────────────────────────────
 
-function drawAll(ctx, layout, scale, ox, oy, hoveredId) {
+function drawAll(ctx, layout, scale, ox, oy, hoveredId, focusedId = null) {
   const { nodes, pos, parentChildEdges, spouseEdges } = layout;
 
   ctx.save();
@@ -197,7 +195,7 @@ function drawAll(ctx, layout, scale, ox, oy, hoveredId) {
   const top = (id) => pos[id].y;
   const bot = (id) => pos[id].y + NODE_H;
 
-  /* Spouse edges — red horizontal line */
+  // Рёбра супругов — красная горизонтальная линия
   spouseEdges.forEach(({ from, to }) => {
     if (!pos[from] || !pos[to]) return;
     const left  = pos[from].x <= pos[to].x ? from : to;
@@ -211,7 +209,7 @@ function drawAll(ctx, layout, scale, ox, oy, hoveredId) {
     ctx.stroke();
   });
 
-  /* Parent-child — orthogonal elbow */
+  // Рёбра родитель-ребёнок — ортогональные линии
   parentChildEdges.forEach(({ parent, child }) => {
     if (!pos[parent] || !pos[child]) return;
     const px  = cx(parent),  py  = bot(parent);
@@ -227,17 +225,45 @@ function drawAll(ctx, layout, scale, ox, oy, hoveredId) {
     ctx.stroke();
   });
 
-  /* Nodes */
+  // Отрисовка узлов
   Object.entries(pos).forEach(([id, { x, y }]) => {
     const p = nodes[id];
     if (!p) return;
 
     const hovered = id === hoveredId;
-    const bg = p.gender === "M" ? "#d6c4f7"
+    const focused = id === focusedId;
+
+    // Выделенный узел — жёлтый фон, обычные — по полу
+    const bg = focused ? "#fff3b0"
+             : p.gender === "M" ? "#d6c4f7"
              : p.gender === "F" ? "#f7d6f7"
              : "#e8e8e8";
 
     const r = 7;
+
+    // Оранжевое свечение вокруг выделенного узла
+    if (focused) {
+      ctx.save();
+      ctx.shadowColor = "#f5a623";
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.moveTo(x + r - 4, y - 4);
+      ctx.lineTo(x + NODE_W - r + 4, y - 4);
+      ctx.quadraticCurveTo(x + NODE_W + 4, y - 4, x + NODE_W + 4, y + r - 4);
+      ctx.lineTo(x + NODE_W + 4, y + NODE_H - r + 4);
+      ctx.quadraticCurveTo(x + NODE_W + 4, y + NODE_H + 4, x + NODE_W - r + 4, y + NODE_H + 4);
+      ctx.lineTo(x + r - 4, y + NODE_H + 4);
+      ctx.quadraticCurveTo(x - 4, y + NODE_H + 4, x - 4, y + NODE_H - r + 4);
+      ctx.lineTo(x - 4, y + r - 4);
+      ctx.quadraticCurveTo(x - 4, y - 4, x + r - 4, y - 4);
+      ctx.closePath();
+      ctx.strokeStyle = "#f5a623";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Прямоугольник узла со скруглёнными углами
     ctx.beginPath();
     ctx.moveTo(x + r, y);
     ctx.lineTo(x + NODE_W - r, y);
@@ -252,10 +278,11 @@ function drawAll(ctx, layout, scale, ox, oy, hoveredId) {
 
     ctx.fillStyle   = bg;
     ctx.fill();
-    ctx.strokeStyle = hovered ? "#333" : "#bbb";
-    ctx.lineWidth   = hovered ? 2.5 : 1;
+    ctx.strokeStyle = focused ? "#e8960c" : hovered ? "#333" : "#bbb";
+    ctx.lineWidth   = focused ? 2.5 : hovered ? 2.5 : 1;
     ctx.stroke();
 
+    // Имя персоны
     const name    = `${p.first_name} ${p.last_name}`;
     const display = name.length > 20 ? name.slice(0, 19) + "…" : name;
     ctx.fillStyle  = "#222";
@@ -263,6 +290,7 @@ function drawAll(ctx, layout, scale, ox, oy, hoveredId) {
     ctx.textAlign  = "center";
     ctx.fillText(display, x + NODE_W / 2, y + 22);
 
+    // Годы жизни
     ctx.fillStyle = "#555";
     ctx.font      = "11px Arial";
     ctx.fillText(
@@ -274,6 +302,7 @@ function drawAll(ctx, layout, scale, ox, oy, hoveredId) {
   ctx.restore();
 }
 
+// Определяет, на какой узел попал клик мыши
 function hitTest(mx, my, pos, scale, ox, oy) {
   const wx = (mx - ox) / scale;
   const wy = (my - oy) / scale;
@@ -283,9 +312,10 @@ function hitTest(mx, my, pos, scale, ox, oy) {
   return null;
 }
 
-// ─── Component ─────────────────────────────────────────────────────────────
+// ─── Компонент ────────────────────────────────────────────────────────────
 
 export default function Graph() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const canvasRef    = useRef(null);
   const layoutRef    = useRef(null);
   const dragging     = useRef(false);
@@ -300,14 +330,17 @@ export default function Graph() {
   const [scale, setScale]             = useState(1.0);
   const [offset, setOffset]           = useState({ x: 20, y: 20 });
   const [hoveredId, setHoveredId]     = useState(null);
+  const [focusedId, setFocusedId]     = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [info, setInfo]               = useState({ total: 0, period: "" });
 
+  // Синхронизируем ref-ы с state для доступа из обработчиков событий
   useEffect(() => { scaleRef.current  = scale;  }, [scale]);
   useEffect(() => { offsetRef.current = offset; }, [offset]);
 
-  const redraw = useCallback((lay, sc, off, hov) => {
+  // Перерисовка Canvas
+  const redraw = useCallback((lay, sc, off, hov, foc) => {
     const canvas = canvasRef.current;
     if (!canvas || !lay) return;
     const dpr  = window.devicePixelRatio || 1;
@@ -316,12 +349,14 @@ export default function Graph() {
     canvas.height = rect.height * dpr;
     const ctx = canvas.getContext("2d");
     ctx.scale(dpr, dpr);
-    drawAll(ctx, lay, sc, off.x, off.y, hov);
+    drawAll(ctx, lay, sc, off.x, off.y, hov, foc);
   }, []);
 
-  useEffect(() => { redraw(layout, scale, offset, hoveredId); },
-    [layout, scale, offset, hoveredId, redraw]);
+  // Перерисовываем при изменении любого параметра отображения
+  useEffect(() => { redraw(layout, scale, offset, hoveredId, focusedId); },
+    [layout, scale, offset, hoveredId, focusedId, redraw]);
 
+  // Перерисовка при изменении размера окна
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -332,16 +367,41 @@ export default function Graph() {
     return () => ro.disconnect();
   }, [redraw]);
 
-  // Centre the initial view on the top generation
+  // Центрирование начального вида на верхнем поколении (если нет ?focus=)
   useEffect(() => {
     if (!layout || !isFirstLoad.current) return;
     isFirstLoad.current = false;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const { width } = canvas.getBoundingClientRect();
-    setOffset({ x: width / 2 - layout.rootCenterX, y: 20 });
-  }, [layout]);
+    const focusParam = searchParams.get("focus");
+    if (!focusParam) {
+      const { width } = canvas.getBoundingClientRect();
+      setOffset({ x: width / 2 - layout.rootCenterX, y: 20 });
+    }
+  }, [layout, searchParams]);
 
+  // Фокусировка на конкретном узле при переходе с ?focus=id
+  useEffect(() => {
+    const focusParam = searchParams.get("focus");
+    if (!focusParam || !layout || !layout.pos[focusParam]) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const nodePos = layout.pos[focusParam];
+    const focusScale = 1.4;
+    setScale(focusScale);
+    setOffset({
+      x: rect.width / 2 - (nodePos.x + NODE_W / 2) * focusScale,
+      y: rect.height / 2 - (nodePos.y + NODE_H / 2) * focusScale,
+    });
+    setFocusedId(focusParam);
+    // Убираем ?focus= из URL, чтобы при обновлении страницы не зацикливалось
+    setSearchParams({}, { replace: true });
+    // Подсветка исчезает через 4 секунды
+    setTimeout(() => setFocusedId(null), 4000);
+  }, [layout, searchParams, setSearchParams]);
+
+  // Загрузка данных графа с сервера
   const loadGraph = useCallback(async () => {
     setLoading(true);
     const data = await getGraphData();
@@ -359,7 +419,7 @@ export default function Graph() {
 
   useEffect(() => { loadGraph(); }, [loadGraph]);
 
-  /* Wheel — zoom towards cursor */
+  // Зум колесом мыши — к позиции курсора
   function handleWheel(e) {
     e.preventDefault();
     const canvas = canvasRef.current;
@@ -376,6 +436,7 @@ export default function Graph() {
     });
   }
 
+  // Начало перетаскивания
   function handleMouseDown(e) {
     dragging.current  = true;
     dragMoved.current = false;
@@ -385,6 +446,7 @@ export default function Graph() {
     };
   }
 
+  // Перемещение мыши — перетаскивание или подсветка узла при наведении
   function handleMouseMove(e) {
     if (dragging.current) {
       dragMoved.current = true;
@@ -403,8 +465,10 @@ export default function Graph() {
     canvas.style.cursor = id ? "pointer" : "grab";
   }
 
+  // Конец перетаскивания
   function handleMouseUp() { dragging.current = false; }
 
+  // Клик по узлу — открытие карточки персоны
   async function handleClick(e) {
     if (dragMoved.current) return;
     const lay = layoutRef.current;
@@ -422,6 +486,7 @@ export default function Graph() {
     }
   }
 
+  // Удаление персоны с подтверждением
   async function handleDelete(id) {
     if (!window.confirm("Вы уверены, что хотите удалить эту персону? Все связи будут удалены.")) return;
     await deletePerson(id);
@@ -430,6 +495,7 @@ export default function Graph() {
     await loadGraph();
   }
 
+  // Кнопки управления масштабом
   function zoomIn()  { setScale((s) => Math.min(3, +(s * 1.2).toFixed(3))); }
   function zoomOut() { setScale((s) => Math.max(0.07, +(s / 1.2).toFixed(3))); }
   function resetView() {
