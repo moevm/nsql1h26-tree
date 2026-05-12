@@ -112,6 +112,15 @@ export default function PersonModal({
           >
             Редактировать
           </button>
+          <button
+            className="modal-graph-btn"
+            onClick={() => {
+              onClose();
+              navigate(`/graph?focus=${data.id}`);
+            }}
+          >
+            Показать на графе
+          </button>
           <button onClick={() => onDelete?.(data.id)}>Удалить</button>
         </div>
       </div>
