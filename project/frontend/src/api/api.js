@@ -55,3 +55,12 @@ export async function updatePerson(id, data) {
   if (!res.ok) throw new Error("Ошибка сохранения");
   return res.json();
 }
+
+export async function getCustomStats(params) {
+  const query = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([_, v]) => v !== "" && v !== null && v !== undefined))
+  );
+  const res = await fetch(`${API_BASE}/stats/custom?${query}`);
+  if (!res.ok) throw new Error("Ошибка загрузки статистики");
+  return res.json();
+}
