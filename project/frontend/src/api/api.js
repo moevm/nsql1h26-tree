@@ -10,8 +10,11 @@ export async function getRecent() {
   return res.json();
 }
 
-export async function searchPersons(filters) {
-  const params = new URLSearchParams(filters);
+export async function searchPersons(filters, page = 1, pageSize = 20) {
+  const params = new URLSearchParams(
+    Object.fromEntries(Object.entries({ ...filters, page, page_size: pageSize })
+      .filter(([_, v]) => v !== "" && v !== null && v !== undefined))
+  );
   const res = await fetch(`${API_BASE}/persons/search?${params}`);
   if (!res.ok) throw new Error("Search failed");
   return res.json();
