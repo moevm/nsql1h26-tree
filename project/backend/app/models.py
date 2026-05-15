@@ -133,3 +133,42 @@ class ExportData(BaseModel):
 class ImportData(BaseModel):
     persons: list[ExportPerson]
     relations: list[ExportRelation]
+
+class CustomStatsParams(BaseModel):
+    country: str | None = None
+    gender: str | None = None
+    birth_year_from: int | None = None
+    birth_year_to: int | None = None
+    death_year_from: int | None = None
+    death_year_to: int | None = None
+
+    axis_x: str  # "birth_year" | "title" | "country"
+    axis_y: str  # "count" | "avg_age" | "marriages"
+
+    @field_validator("axis_x")
+    @classmethod
+    def validate_axis_x(cls, v: str) -> str:
+        allowed = {"birth_year", "title", "country"}
+        if v not in allowed:
+            raise ValueError(f"axis_x must be one of {allowed}")
+        return v
+
+    @field_validator("axis_y")
+    @classmethod
+    def validate_axis_y(cls, v: str) -> str:
+        allowed = {"count", "avg_age", "marriages"}
+        if v not in allowed:
+            raise ValueError(f"axis_y must be one of {allowed}")
+        return v
+
+
+class ChartDataPoint(BaseModel):
+    label: str
+    value: float
+    count: int
+
+class CustomStatsResult(BaseModel):
+    chart: list[ChartDataPoint]
+    total_persons: int
+    avg_age: float | None = None
+    peak_birth_year: int | None = None

@@ -15,6 +15,9 @@ from app.models import (
     ExportPerson, 
     ExportRelation,
     ImportData,
+    CustomStatsParams,
+    CustomStatsResult,
+    ChartDataPoint
 )
 from app.seed import _get_reverse_type
 
@@ -481,3 +484,139 @@ def update_person(session: Session, person_id: str, data: PersonCreate, target_g
         )
 
     return get_person_by_id(session, person_id)
+
+def get_custom_stats(session: Session, params: CustomStatsParams) -> CustomStatsResult:
+    conditions: list[str] = []
+    qp: dict = {}
+
+    if params.country:
+        conditions.append("p.country = $country")
+        qp["country"] = params.country
+
+    if params.gender:
+        conditions.append("p.gender = $gender")
+        qp["gender"] = params.gender
+
+    if params.birth_year_from is not None:
+        conditions.append("p.birth_year IS NOT NULL AND p.birth_year >= $birth_year_from")
+        qp["birth_year_from"] = params.birth_year_from
+
+    if params.birth_year_to is not None:
+        conditions.append("p.birth_year IS NOT NULL AND p.birth_year <= $birth_year_to")
+        qp["birth_year_to"] = params.birth_year_to
+
+    if params.death_year_from is not None:
+        conditions.append("p.death_year IS NOT NULL AND p.death_year >= $death_year_from")
+        qp["death_year_from"] = params.death_year_from
+
+    if params.death_year_to is not None:
+        conditions.append("p.death_year IS NOT NULL AND p.death_year <= $death_year_to")
+        qp["death_year_to"] = params.death_year_to
+
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+    x_map = {
+        "birth_year": "toString(p.birth_year)",
+        "title":      "coalesce(p.title, '—')",
+        "country":    "coalesce(p.country, '—')",
+    }
+    x_expr = x_map[params.axis_x]
+
+    if params.axis_y == "count":
+        y_expr = "count(p)"
+        y_alias = "y_val"
+        extra_match = ""
+    elif params.axis_y == "avg_age":
+        y_expr = """avg(
+            CASE WHEN p.birth_year IS NOT NULL AND p.death_year IS NOT NULL
+            THEN p.death_year - p.birth_year END
+        )"""
+        y_alias = "y_val"
+        extra_match = ""
+    else:
+        extra_match = """
+        OPTIONAL MATCH (p)-[m:RELATED_TO {type: 'spouse'}]->(:Person)
+        """
+        y_expr = "avg(coalesce(count(m), 0))"
+        y_alias = "y_val"
+
+    cypher = f"""
+        MATCH (p:Person)
+        {where}
+        {extra_match}
+        WITH {x_expr} AS x_label, p
+        WITH x_label, count(p) AS grp_count,
+             avg(
+                 CASE WHEN p.birth_year IS NOT NULL AND p.death_year IS NOT NULL
+                 THEN p.death_year - p.birth_year END
+             ) AS grp_avg_age
+        RETURN x_label, grp_count, grp_avg_age
+        ORDER BY x_label
+    """
+
+    if params.axis_y == "marriages":
+        cypher = f"""
+            MATCH (p:Person)
+            {where}
+            WITH {x_expr} AS x_label, p
+            OPTIONAL MATCH (p)-[:RELATED_TO {{type: 'spouse'}}]->(:Person)
+            WITH x_label, p, count(*) AS p_marriages
+            WITH x_label,
+                 count(p)            AS grp_count,
+                 avg(p_marriages)    AS grp_marriages,
+                 avg(
+                     CASE WHEN p.birth_year IS NOT NULL AND p.death_year IS NOT NULL
+                     THEN p.death_year - p.birth_year END
+                 ) AS grp_avg_age
+            RETURN x_label, grp_count, grp_marriages, grp_avg_age
+            ORDER BY x_label
+        """
+
+    rows = list(session.run(cypher, **qp))
+
+    chart: list[ChartDataPoint] = []
+    total_persons = 0
+    weighted_age_sum = 0.0
+    age_count = 0
+
+    for row in rows:
+        label = row["x_label"] or "—"
+        grp_count: int = row["grp_count"] or 0
+        grp_avg_age: float | None = row.get("grp_avg_age")
+
+        if params.axis_y == "count":
+            value = float(grp_count)
+        elif params.axis_y == "avg_age":
+            value = round(grp_avg_age, 1) if grp_avg_age is not None else 0.0
+        else:
+            value = round(row.get("grp_marriages") or 0.0, 2)
+
+        chart.append(ChartDataPoint(label=label, value=value, count=grp_count))
+        total_persons += grp_count
+
+        if grp_avg_age is not None:
+            weighted_age_sum += grp_avg_age * grp_count
+            age_count += grp_count
+
+    overall_avg_age = round(weighted_age_sum / age_count, 1) if age_count else None
+
+    peak_conditions = list(conditions) + ["p.birth_year IS NOT NULL"]
+    peak_where = "WHERE " + " AND ".join(peak_conditions)
+
+    peak_result = session.run(f"""
+        MATCH (p:Person)
+        {peak_where}
+        WITH p.birth_year AS yr, count(*) AS cnt
+        ORDER BY cnt DESC, yr
+        LIMIT 1
+        RETURN yr
+    """, **qp)
+    peak_row = peak_result.single()
+    peak_birth_year = peak_row["yr"] if peak_row else None
+
+    return CustomStatsResult(
+        chart=chart,
+        total_persons=total_persons,
+        avg_age=overall_avg_age,
+        peak_birth_year=peak_birth_year,
+    )
