@@ -126,52 +126,67 @@ def get_recent_persons(session: Session, limit: int = 5) -> list[PersonBrief]:
     return [_node_to_brief(rec["p"]) for rec in result]
 
 # UC-02: поиск & фильтрация
-def search_persons(session: Session, params: PersonSearchParams) -> list[PersonBrief]:
+def search_persons(session: Session, params: PersonSearchParams, page: int = 1, page_size: int = 20) -> dict:
     conditions: list[str] = []
     query_params: dict = {}
 
-    if params.first_name: 
+    if params.first_name:
         conditions.append("toLower(p.first_name) CONTAINS toLower($first_name)")
         query_params["first_name"] = params.first_name
-
     if params.last_name:
         conditions.append("toLower(p.last_name) CONTAINS toLower($last_name)")
         query_params["last_name"] = params.last_name
-
     if params.title:
         conditions.append("p.title IS NOT NULL AND toLower(p.title) CONTAINS toLower($title)")
         query_params["title"] = params.title
-
     if params.gender:
         conditions.append("p.gender = $gender")
         query_params["gender"] = params.gender
-
     if params.birth_year_from is not None:
         conditions.append("p.birth_year IS NOT NULL AND p.birth_year >= $birth_year_from")
         query_params["birth_year_from"] = params.birth_year_from
-
-    if params.birth_year_to is not None: 
+    if params.birth_year_to is not None:
         conditions.append("p.birth_year IS NOT NULL AND p.birth_year <= $birth_year_to")
         query_params["birth_year_to"] = params.birth_year_to
-
-    if params.death_year_from is not None: 
+    if params.death_year_from is not None:
         conditions.append("p.death_year IS NOT NULL AND p.death_year >= $death_year_from")
         query_params["death_year_from"] = params.death_year_from
-    
-    if params.death_year_to is not None: 
+    if params.death_year_to is not None:
         conditions.append("p.death_year IS NOT NULL AND p.death_year <= $death_year_to")
         query_params["death_year_to"] = params.death_year_to
 
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
-    cypher = f"""
+    count_result = session.run(
+        f"MATCH (p:Person) {where_clause} RETURN count(p) AS total",
+        **query_params,
+    )
+    total = count_result.single()["total"]
+
+    skip = (page - 1) * page_size
+    query_params["skip"] = skip
+    query_params["limit"] = page_size
+
+    result = session.run(
+        f"""
         MATCH (p:Person)
         {where_clause}
         RETURN p
         ORDER BY p.last_name, p.first_name
-    """
-    result = session.run(cypher, **query_params)
-    return [_node_to_brief(rec["p"]) for rec in result]
+        SKIP $skip LIMIT $limit
+        """,
+        **query_params,
+    )
+    items = [_node_to_brief(rec["p"]) for rec in result]
+    total_pages = max(1, (total + page_size - 1) // page_size)
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+    }
 
 # UC-03: карточка персоны
 def get_person_by_id(session: Session, person_id: str) -> Optional[PersonFull]:

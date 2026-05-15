@@ -172,3 +172,10 @@ class CustomStatsResult(BaseModel):
     total_persons: int
     avg_age: float | None = None
     peak_birth_year: int | None = None
+
+class PersonPage(BaseModel):
+    items: list[PersonBrief]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
