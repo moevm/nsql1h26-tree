@@ -5,6 +5,7 @@ from app.models import (
     PersonCreate,
     PersonFull,
     PersonSearchParams,
+    PersonPage
 )
 from app.services import person_service
 from app.db import get_session
@@ -12,29 +13,26 @@ from app.db import get_session
 router = APIRouter(prefix="/api/persons", tags=["persons"])
 
 # UC-02: поиск & фильтрация
-@router.get("/search", response_model=list[PersonBrief], summary="Поиск персон (UC-02)")
+@router.get("/search", response_model=PersonPage, summary="Поиск персон (UC-02)")
 def search_persons(
-    first_name: str | None = Query(None, description="Подстрока имени (регистронезависимо)"),
-    last_name: str | None = Query(None, description="Подстрока фамилии (регистронезависимо)"),
-    title: str | None = Query(None, description="Подстрока титула (регистронезависимо)"),
-    gender: str | None = Query(None, description="Пол: M или F"),
-    birth_year_from: int | None = Query(None, description="Год рождения от"),
-    birth_year_to: int | None = Query(None, description="Год рождения до"),
-    death_year_from: int | None = Query(None, description="Год смерти от"),
-    death_year_to: int | None = Query(None, description="Год смерти до"),
+    first_name: str | None = Query(None),
+    last_name: str | None = Query(None),
+    title: str | None = Query(None),
+    gender: str | None = Query(None),
+    birth_year_from: int | None = Query(None),
+    birth_year_to: int | None = Query(None),
+    death_year_from: int | None = Query(None),
+    death_year_to: int | None = Query(None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     session: Session = Depends(get_session),
 ):
     params = PersonSearchParams(
-        first_name=first_name,
-        last_name=last_name,
-        title=title,
-        gender=gender,
-        birth_year_from=birth_year_from,
-        birth_year_to=birth_year_to,
-        death_year_from=death_year_from,
-        death_year_to=death_year_to,
+        first_name=first_name, last_name=last_name, title=title, gender=gender,
+        birth_year_from=birth_year_from, birth_year_to=birth_year_to,
+        death_year_from=death_year_from, death_year_to=death_year_to,
     )
-    return person_service.search_persons(session, params)
+    return person_service.search_persons(session, params, page, page_size)
 
 # UC-03: карточка персоны 
 @router.get("/{person_id}", response_model=PersonFull, summary="Карточка персоны (UC-03)")

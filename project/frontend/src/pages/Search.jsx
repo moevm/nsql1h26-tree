@@ -11,8 +11,10 @@ export default function Search() {
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageInfo, setPageInfo] = useState(null);
 
-  async function search() {
+  async function search(p = 1) {
     setLoading(true);
     const numericFields = ["birth_year_from", "birth_year_to", "death_year_from", "death_year_to"];
     const clean = Object.fromEntries(
@@ -23,8 +25,10 @@ export default function Search() {
       })
     );
     try {
-      const data = await searchPersons(clean);
-      setResults(Array.isArray(data) ? data : []);
+      const data = await searchPersons(clean, p);
+      setResults(Array.isArray(data.items) ? data.items : []);
+      setPageInfo({ total: data.total, total_pages: data.total_pages });
+      setPage(p);
     } catch {
       setResults([]);
     }
@@ -80,7 +84,7 @@ export default function Search() {
 
         </div>
 
-        <button onClick={search}>
+        <button onClick={() => search(1)}>
           {loading ? "Поиск..." : "Найти"}
         </button>
       </div>
@@ -112,6 +116,26 @@ export default function Search() {
           )}
         </tbody>
       </table>
+
+      {pageInfo && pageInfo.total_pages > 1 && (
+        <div style={{ display: "flex", gap: 8, marginTop: 16, alignItems: "center" }}>
+          <button
+            onClick={() => search(page - 1)}
+            disabled={page <= 1}
+          >
+            ←
+          </button>
+          <span style={{ fontSize: 14, color: "#555" }}>
+            Страница {page} из {pageInfo.total_pages} (всего: {pageInfo.total})
+          </span>
+          <button
+            onClick={() => search(page + 1)}
+            disabled={page >= pageInfo.total_pages}
+          >
+            →
+          </button>
+        </div>
+      )}
       <PersonModal
         isOpen={isModalOpen}
         onClose={() => {
